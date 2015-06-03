@@ -36,5 +36,4 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
     }
 
 
-
 }

@@ -116,6 +116,8 @@ public class DataSource {
         }
     }
 
+
+
     void saveData() { // creating void save method to check what's already in the table
         for (RssItem item: items) { // loops through every RssItem
             Cursor databaseSoftware = databaseOpenHelper.getWritableDatabase().rawQuery("SELECT COUNT(id) FROM blocly_db WHERE id = " + item.getGuid() + ";", new String[0]);
