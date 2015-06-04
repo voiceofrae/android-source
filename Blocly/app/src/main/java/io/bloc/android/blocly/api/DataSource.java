@@ -101,6 +101,19 @@ public class DataSource {
         return items;
     }
 
+    static RssFeed feedFromCursor(Cursor cursor) {
+        return new RssFeed(RssFeedTable.getTitle(cursor), RssFeedTable.getDescription(cursor),
+                RssFeedTable.getSiteURL(cursor), RssFeedTable.getFeedURL(cursor));
+    }
+
+    // #4b
+    static RssItem itemFromCursor(Cursor cursor) {
+        return new RssItem(RssItemTable.getGUID(cursor), RssItemTable.getTitle(cursor),
+                RssItemTable.getDescription(cursor), RssItemTable.getLink(cursor),
+                RssItemTable.getEnclosure(cursor), RssItemTable.getRssFeedId(cursor),
+                RssItemTable.getPubDate(cursor), RssItemTable.getFavorite(cursor),
+                RssItemTable.getArchived(cursor));
+    }
 
     void createFakeData() {
         feeds.add(new RssFeed("DC News Feed",
