@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Configuration;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
@@ -15,8 +17,11 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
 
+import io.bloc.android.blocly.BloclyApplication;
 import io.bloc.android.blocly.R;
 import io.bloc.android.blocly.api.DataSource;
+import io.bloc.android.blocly.api.model.database.DatabaseOpenHelper;
+import io.bloc.android.blocly.api.model.database.table.RssItemTable;
 import io.bloc.android.blocly.ui.adapter.ItemAdapter;
 import io.bloc.android.blocly.ui.adapter.NavigationDrawerAdapter;
 
@@ -96,11 +101,22 @@ public class BloclyActivity extends ActionBarActivity {
         unregisterReceiver(dataSourceBroadcastReceiver);
     }
 
-    // Methods to query the database - checkpoint 54 assignment
-//    DatabaseOpenHelper bloclyOpenHelper = new DatabaseOpenHelper(BloclyApplication.getSharedInstance()); // with help from Tony
-//    SQLiteDatabase readableDatabase = bloclyOpenHelper.getReadableDatabase();
-//    RssItemTable rssItemTable = new RssItemTable(); // instance of RssItemTable for us to use here
-//    public Cursor cursor =  readableDatabase.query(false, rssItemTable.getName(), null, null, null, null, null, "pub_date", " 20");
+
+    // Methods to query the database - from  checkpoint 54 assignment
+    DatabaseOpenHelper bloclyOpenHelper = new DatabaseOpenHelper(BloclyApplication.getSharedInstance()); // with help from Tony
+    SQLiteDatabase readableDatabase = bloclyOpenHelper.getReadableDatabase();
+    RssItemTable rssItemTable = new RssItemTable(); // instance of RssItemTable for us to use here
+
+    // query for checkpoint 54 assignment
+    public Cursor cursor =  readableDatabase.query(false, rssItemTable.getName(), null, null, null, null, null, "pub_date", " 20");
+
+    // queries for checkpoint 55 assignment
+    public Cursor queryArchived =  readableDatabase.query(rssItemTable.getName(), null, "rssItemTable.getArchived() = true", null, null, null, null);
+    public Cursor queryArchivedFromAParticularFeed =  readableDatabase.query(rssItemTable.getName(), null, "rssItemTable.getName() = particularFeed AND rssItemTable.getArchived() = true", null, null, null, null);
+    public Cursor queryFavorites =  readableDatabase.query(rssItemTable.getName(), null, "rssItemTable.getFavorite() = true", null, null, null, null);
+    public Cursor queryFavoritesFromAParticularFeed =  readableDatabase.query(rssItemTable.getName(), null, "rssItemTable.getName() = particularFeed AND rssItemTable.getFavorite() = true", null, null, null, null);
+    public Cursor queryAllItemsFromAParticularFeed = readableDatabase.query(rssItemTable.getName(), null, "rssItemTable.getName() = particularFeed", null, null, null, null);
+    public Cursor queryAllItemsFromaParticularFeedWithOffsetAndLimit = readableDatabase.query(rssItemTable.getName(), null, "rssItemTable.getName() = particularFeed", null, null, null, "DESC OFFSET 10 ROWS", "20");
 
 }
 
