@@ -1,6 +1,6 @@
 package io.bloc.android.blocly.api;
 
-import android.content.ContentValues;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -26,6 +26,8 @@ import io.bloc.android.blocly.api.network.GetFeedsNetworkRequest;
  */
 public class DataSource {
 
+    public static final String ACTION_DOWNLOAD_COMPLETED = DataSource.class.getCanonicalName().concat(".ACTION_DOWNLOAD_COMPLETED");
+
     private DatabaseOpenHelper databaseOpenHelper;
     private RssFeedTable rssFeedTable;
     private RssItemTable rssItemTable;
@@ -40,7 +42,6 @@ public class DataSource {
                 rssFeedTable, rssItemTable);
         feeds = new ArrayList<RssFeed>();
         items = new ArrayList<RssItem>();
-        createFakeData();
 
         new Thread(new Runnable() {
             @Override
@@ -59,7 +60,7 @@ public class DataSource {
                             .setDescription(androidCentral.channelDescription)
                             .insert(writableDatabase);
 
-
+                List<RssItem> newRSSItems = new ArrayList<RssItem>();
                 for (GetFeedsNetworkRequest.ItemResponse itemResponse : androidCentral.channelItems) {
                     long itemPubDate = System.currentTimeMillis();
                     DateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy kk:mm:ss z", Locale.ENGLISH);
@@ -68,7 +69,7 @@ public class DataSource {
                     } catch (ParseException e) {
                         e.printStackTrace();
                     }
-                    new RssItemTable.Builder()
+                    long newItemRowId = new RssItemTable.Builder()
                             .setTitle(itemResponse.itemTitle)
                             .setDescription(itemResponse.itemDescription)
                             .setEnclosure(itemResponse.itemEnclosureURL)
@@ -78,7 +79,20 @@ public class DataSource {
                             .setPubDate(itemPubDate)
                             .setRSSFeed(androidCentralFeedId)
                             .insert(writableDatabase);
-                }
+
+                Cursor itemCursor = rssItemTable.fetchRow(databaseOpenHelper.getReadableDatabase(), newItemRowId);
+                itemCursor.moveToFirst();
+                RssItem newRssItem = itemFromCursor(itemCursor);
+                newRSSItems.add(newRssItem);
+                itemCursor.close();
+            }
+            Cursor androidCentralCursor = rssFeedTable.fetchRow(databaseOpenHelper.getReadableDatabase(), androidCentralFeedId);
+            androidCentralCursor.moveToFirst();
+            RssFeed androidCentralRSSFeed = feedFromCursor(androidCentralCursor);
+            androidCentralCursor.close();
+            items.addAll(newRSSItems);
+            feeds.add(androidCentralRSSFeed);
+            BloclyApplication.getSharedInstance().sendBroadcast(new Intent(ACTION_DOWNLOAD_COMPLETED));
             }
         }).start();
     }
@@ -91,6 +105,28 @@ public class DataSource {
         return items;
     }
 
+    static RssFeed feedFromCursor(Cursor cursor) {
+        return new RssFeed(RssFeedTable.getTitle(cursor), RssFeedTable.getDescription(cursor),
+                RssFeedTable.getSiteURL(cursor), RssFeedTable.getFeedURL(cursor));
+    }
+
+    static RssItem itemFromCursor(Cursor cursor) {
+        // original version
+        return new RssItem(RssItemTable.getGUID(cursor), RssItemTable.getTitle(cursor),
+                RssItemTable.getDescription(cursor), RssItemTable.getLink(cursor),
+                RssItemTable.getEnclosure(cursor), RssItemTable.getRssFeedId(cursor),
+                RssItemTable.getPubDate(cursor), RssItemTable.getFavorite(cursor),
+                RssItemTable.getArchived(cursor));
+    }
+
+        // rewritten to further debug
+//     return new RssItem(RssItemTable.getLink(cursor), RssItemTable.getTitle(cursor),
+//             RssItemTable.getDescription(cursor), RssItemTable.getGUID(cursor),
+//             RssItemTable.getRssFeedId(cursor), RssItemTable.getPubDate(cursor),
+//             RssItemTable.getEnclosure(cursor), true,
+//             RssItemTable.getFavorite(cursor), RssItemTable.getArchived(cursor));
+//    }
+
     void createFakeData() {
         feeds.add(new RssFeed("DC News Feed",
                 "This feed is just incredible, I can't even begin to tell you…",
@@ -101,28 +137,29 @@ public class DataSource {
                     BloclyApplication.getSharedInstance().getString(R.string.placeholder_content),
                     "http://favoritefeed.net?story_id=an-incredible-news-story",
                     "http://rs1img.memecdn.com/silly-dog_o_511213.jpg",
-                    0, System.currentTimeMillis(), false, false, false));
+                    0, System.currentTimeMillis(), false, false));
         }
     }
 
-    void saveData() { // creating void save method to check what's already in the table
-        for (RssItem item: items) { // loops through every RssItem
-            Cursor databaseSoftware = databaseOpenHelper.getWritableDatabase().rawQuery("SELECT COUNT(id) FROM blocly_db WHERE id = " + item.getGuid() + ";", new String[0]);
-            if (databaseSoftware.getCount() == 0) { // if the item does not exist
-                ContentValues insertValues = new ContentValues();
-                insertValues.put("link", item.getUrl());
-                insertValues.put("title", item.getTitle());
-                insertValues.put("description", item.getDescription());
-                insertValues.put("guid", item.getGuid());
-                insertValues.put("pub_date", item.getDatePublished());
-                insertValues.put("enclosure", 0); // doesn't seem like we need or use this
-                insertValues.put("mime_type", 0); // doesn't seem like we need or use this
-                insertValues.put("rss_feed", item.getRssFeedId());
-                insertValues.put("is_favorite", item.isFavorite());
-                insertValues.put("is_archived", item.isArchived()); // items correspond to RssItemTable values
-                databaseOpenHelper.getWritableDatabase().insert("RssItemTable", null, insertValues);
-            }
-        }
-    }
+    // solution for assignment 53
+//    void saveData() { // creating void save method to check what's already in the table
+//        for (RssItem item: items) { // loops through every RssItem
+//            Cursor databaseSoftware = databaseOpenHelper.getWritableDatabase().rawQuery("SELECT COUNT(id) FROM blocly_db WHERE id = " + item.getGuid() + ";", new String[0]);
+//            if (databaseSoftware.getCount() == 0) { // if the item does not exist
+//                ContentValues insertValues = new ContentValues();
+//                insertValues.put("link", item.getUrl());
+//                insertValues.put("title", item.getTitle());
+//                insertValues.put("description", item.getDescription());
+//                insertValues.put("guid", item.getGuid());
+//                insertValues.put("pub_date", item.getDatePublished());
+//                insertValues.put("enclosure", 0); // doesn't seem like we need or use this
+//                insertValues.put("mime_type", 0); // doesn't seem like we need or use this
+//                insertValues.put("rss_feed", item.getRssFeedId());
+//                insertValues.put("is_favorite", item.isFavorite());
+//                insertValues.put("is_archived", item.isArchived()); // items correspond to RssItemTable values
+//                databaseOpenHelper.getWritableDatabase().insert("RssItemTable", null, insertValues);
+//            }
+//        }
+//    }
 
 }

@@ -1,8 +1,10 @@
 package io.bloc.android.blocly.ui.activity;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Configuration;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
@@ -12,23 +14,31 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
+import android.widget.Toast;
 
-import io.bloc.android.blocly.BloclyApplication;
 import io.bloc.android.blocly.R;
-import io.bloc.android.blocly.api.model.database.DatabaseOpenHelper;
-import io.bloc.android.blocly.api.model.database.table.RssItemTable;
+import io.bloc.android.blocly.api.DataSource;
+import io.bloc.android.blocly.api.model.RssFeed;
 import io.bloc.android.blocly.ui.adapter.ItemAdapter;
 import io.bloc.android.blocly.ui.adapter.NavigationDrawerAdapter;
 
 /**
  * Created by ReneeCS on 3/17/15.
  */
-public class BloclyActivity extends ActionBarActivity {
+public class BloclyActivity extends ActionBarActivity implements NavigationDrawerAdapter.NavigationDrawerAdapterDelegate {
 
     private ItemAdapter itemAdapter;
     private ActionBarDrawerToggle drawerToggle;
     private DrawerLayout drawerLayout;
     private NavigationDrawerAdapter navigationDrawerAdapter;
+
+    private BroadcastReceiver dataSourceBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            itemAdapter.notifyDataSetChanged();
+            navigationDrawerAdapter.notifyDataSetChanged();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,10 +62,13 @@ public class BloclyActivity extends ActionBarActivity {
         drawerLayout.setDrawerListener(drawerToggle);
 
         navigationDrawerAdapter = new NavigationDrawerAdapter();
+        navigationDrawerAdapter.setDelegate(this);
         RecyclerView navigationRecyclerView = (RecyclerView) findViewById(R.id.rv_nav_activity_blocly);
         navigationRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         navigationRecyclerView.setItemAnimator(new DefaultItemAnimator());
         navigationRecyclerView.setAdapter(navigationDrawerAdapter);
+
+        registerReceiver(dataSourceBroadcastReceiver, new IntentFilter(DataSource.ACTION_DOWNLOAD_COMPLETED));
 
     }
 
@@ -80,14 +93,33 @@ public class BloclyActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    // Methods to query the database
+         /*
+      * NavigationDrawerAdapterDelegate
+      */
 
-    DatabaseOpenHelper bloclyOpenHelper = new DatabaseOpenHelper(BloclyApplication.getSharedInstance()); // with help from Tony
-    SQLiteDatabase readableDatabase = bloclyOpenHelper.getReadableDatabase();
+    @Override
+    public void didSelectNavigationOption(NavigationDrawerAdapter adapter, NavigationDrawerAdapter.NavigationOption navigationOption) {
+        drawerLayout.closeDrawers();
+        Toast.makeText(this, "Show the " + navigationOption.name(), Toast.LENGTH_SHORT).show();
+    }
 
-    RssItemTable rssItemTable = new RssItemTable(); // instance of RssItemTable for us to use here
+    @Override
+    public void didSelectFeed(NavigationDrawerAdapter adapter, RssFeed rssFeed) {
+        drawerLayout.closeDrawers();
+        Toast.makeText(this, "Show RSS items from " + rssFeed.getTitle(), Toast.LENGTH_SHORT).show();
+    }
 
-    public Cursor cursor =  readableDatabase.query(false, rssItemTable.getName(), null, null, null, null, null, "pub_date", " 20");
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(dataSourceBroadcastReceiver);
+    }
+
+    // Methods to query the database - checkpoint 54 assignment
+//    DatabaseOpenHelper bloclyOpenHelper = new DatabaseOpenHelper(BloclyApplication.getSharedInstance()); // with help from Tony
+//    SQLiteDatabase readableDatabase = bloclyOpenHelper.getReadableDatabase();
+//    RssItemTable rssItemTable = new RssItemTable(); // instance of RssItemTable for us to use here
+//    public Cursor cursor =  readableDatabase.query(false, rssItemTable.getName(), null, null, null, null, null, "pub_date", " 20");
 
 }
 
